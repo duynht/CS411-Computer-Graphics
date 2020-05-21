@@ -244,9 +244,9 @@ void MidpointEllipse::draw() {
 	GLdouble x = 0;
 	GLdouble y = ry;
 
-	GLdouble d1 = (ry * ry) - (rx * rx * ry) + (0.25 * rx * rx);
-	GLdouble dx = 2 * ry * ry * x;
-	GLdouble dy = 2 * rx * rx * y;
+	GLdouble d1 = ((double)ry * (double)ry) - ((double)rx * (double)rx * (double)ry) + (0.25 * (double)rx * (double)rx);
+	GLdouble dx = 2 * (double)ry * (double)ry * x;
+	GLdouble dy = 2 * (double)rx * (double)rx * y;
 
 	while (dx < dy) {
 		Shape::positions.push_back(xCenter + x);
@@ -266,21 +266,21 @@ void MidpointEllipse::draw() {
 
 		if (d1 < 0) {
 			x++;
-			dx += 2 * ry * ry;
-			d1 += dx + ry * ry;
+			dx += 2 * (double)ry * (double)ry;
+			d1 += dx + (double)ry * (double)ry;
 		}
 		else {
 			x++;
 			y--;
-			dx += 2 * ry * ry;
-			dy -= 2 * rx * rx;
-			d1 += dx - dy + ry * ry;
+			dx += 2 * (double)ry * (double)ry;
+			dy -= 2 * (double)rx * (double)rx;
+			d1 += dx - dy + (double)ry * (double)ry;
 		}
 	}
 
-	GLdouble d2 = ((ry * ry) * ((x + 0.5) * (x + 0.5))) +
-				((rx * rx) * ((y - 1) * (y - 1))) -
-				(rx * rx * ry * ry);
+	GLdouble d2 = (((double)ry * (double)ry) * ((x + 0.5) * (x + 0.5))) +
+		(((double)rx * (double)rx) * ((y - 1) * (y - 1))) -
+		((double)rx * (double)rx * (double)ry * (double)ry);
 
 	while (y >= 0) {
 		Shape::positions.push_back(xCenter + x);
@@ -300,15 +300,15 @@ void MidpointEllipse::draw() {
 
 		if (d2 > 0) {
 			y--;
-			dy -= 2 * rx * rx;
-			d2 += rx * rx - dy;
+			dy -= 2 * (double)rx * (double)rx;
+			d2 += (double)rx * (double)rx - dy;
 		}
 		else {
 			y--;
 			x++;
-			dx += 2 * ry * ry;
-			dy -= 2 * rx * rx;
-			d2 += dx - dy + rx * rx;
+			dx += 2 * (double)ry * (double)ry;
+			dy -= 2 * (double)rx * (double)rx;
+			d2 += dx - dy + (double)rx * (double)rx;
 		}
 	}
 
