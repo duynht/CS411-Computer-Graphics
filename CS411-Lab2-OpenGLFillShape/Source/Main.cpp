@@ -20,12 +20,18 @@ typedef std::pair<std::string, std::string> ShaderSource;
 
 nanogui::Screen* screen = nullptr;
 int curMode, curShape, curColor;
-int cacheMode, cacheShape, cacheColor;
-double cursorX, cursorY;
+double cursorX, cursorY, seedX, seedY;
 std::vector<GLint> anchorX, anchorY;
+bool fillFlag;
+
+static void resetGlobal() {
+    anchorX.clear();
+    anchorY.clear();
+    fillFlag = false;
+}
 
 int main(int /* argc */, char** /* argv */) {
-
+    nanogui::init();
     if (!glfwInit()) {
         return -1;
     }
@@ -84,7 +90,80 @@ int main(int /* argc */, char** /* argv */) {
                                         " Red ",
                                         " Green ",
                                         " Blue "});
-    
+
+    shapeComboBox->set_callback(
+        [](int mode) {
+            if (mode == 0) {
+                if (curMode != 0) {
+                    resetGlobal();
+                    auto dialog = new nanogui::MessageDialog(screen, 
+                                                            nanogui::MessageDialog::Type::Information,
+                                                            "Circle", 
+                                                            "Use RIGHT-CLICK to continuously choose your radii. \
+                                                             The last point chosen will be the starting-point of a new radius.");
+                    dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
+                }
+            }
+            if (mode == 1) {
+                if (curMode != 1) {
+                    resetGlobal();
+                    auto dialog = new nanogui::MessageDialog(screen,
+                        nanogui::MessageDialog::Type::Information,
+                        "Ellipse",
+                        "Use RIGHT-CLICK to continuously choose your two foci and an arbitrary point on the ellipse. \
+                         The fourth point chosen will erase the current ellipse and be the first new focus.");
+                    dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
+                }
+            }
+            if (mode == 2) {
+                if (curMode != 2) {
+                    resetGlobal();
+                    auto dialog = new nanogui::MessageDialog(screen,
+                        nanogui::MessageDialog::Type::Information,
+                        "Rectangle",
+                        "Use RIGHT-CLICK to continuously choose your main diagonals. \
+                         The last point chosen will be the starting-point of a new diagonal.");
+                    dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
+                }
+            }
+            if (mode == 3) {
+                if (curMode != 3) {
+                    resetGlobal();
+                    auto dialog = new nanogui::MessageDialog(screen,
+                        nanogui::MessageDialog::Type::Information,
+                        "Polygon",
+                        "Use RIGHT-CLICK to add vertices to the polygon.");
+                    dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
+                }
+            }
+        }
+    );
+
+    modeComboBox->set_callback(
+        [&shapeComboBox](int mode) {
+            if (mode == 0) {
+                if (curMode != 0) {
+                    resetGlobal();
+                    shapeComboBox->set_selected_index(0);
+                    auto dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Draw Mode", "Use RIGHT-CLICK to continuously add vertices to the shape to be drawn.");
+                    dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
+
+                    dialog = new nanogui::MessageDialog(screen,
+                        nanogui::MessageDialog::Type::Information,
+                        "Circle",
+                        "Use RIGHT-CLICK to continuously choose your radii. \
+                                                             The last point chosen will be the starting-point of a new radius.");
+                    dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
+                }
+
+            }
+            if (mode == 1) {
+                auto dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Colorize Mode", "Use RIGHT-CLICK to pick the seed point for colorization.");
+                dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
+            }
+        }
+    );
+
     screen->set_visible(true);
     screen->perform_layout();
 
@@ -129,10 +208,15 @@ int main(int /* argc */, char** /* argv */) {
             if (button == GLFW_MOUSE_BUTTON_RIGHT
                 && action == GLFW_PRESS) {
                 if (curMode == 0) {
+                    fillFlag = false;
                     anchorX.push_back(cursorX);
                     anchorY.push_back(cursorY);
                 }
-                else {
+                
+                if (curMode == 1 && !fillFlag) {
+                    seedX = cursorX;
+                    seedY = cursorY;
+                    fillFlag = true;
                 }
             }
             screen->mouse_button_callback_event(button, action, modifiers);
@@ -141,9 +225,18 @@ int main(int /* argc */, char** /* argv */) {
 
     Shape* shape;
     glm::vec4 color;
-
+    int index = 0;
+    int nextIndex = 0;
+    GLuint frameBuffer[2];
+    glCreateBuffers(2, frameBuffer);
+    glReadBuffer(GL_FRONT);
     // Game loop
     while (!glfwWindowShouldClose(window)) {
+        index = (index + 1) % 2;
+        nextIndex = (index + 1) % 2;
+
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, frameBuffer[index]);
+
         std::cout << "OpenGL " << glGetString(GL_VERSION) << std::endl;
         shader.bind();
         int width, height;
@@ -154,14 +247,14 @@ int main(int /* argc */, char** /* argv */) {
 
         // Check if any events have been activated (key pressed, mouse moved etc.) and call corresponding response functions
         glfwPollEvents();
-        glClearColor(0.2f, 0.25f, 0.3f, 1.0f);
+        //glClearColor(0.2f, 0.25f, 0.3f, 1.0f);
+        glClearColor(0.f, 0.f, 0.f, 0.f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         curMode = modeComboBox->selected_index();
         curShape = shapeComboBox->selected_index();
         curColor = colorComboBox->selected_index();
         glfwGetCursorPos(window, &cursorX, &cursorY);
-
 
         switch (curColor) {
         case 0:
@@ -175,12 +268,6 @@ int main(int /* argc */, char** /* argv */) {
         }
         shader.setUniformVec4f("u_Color", color);
 
-        if (curShape != cacheShape) {
-            anchorX.clear();
-            anchorY.clear();
-            cacheShape = curShape;
-        }
-
         switch ((CGType)curShape) {
         case CGType::CIRCLE:
             if (anchorX.size() > 2) {
@@ -190,6 +277,9 @@ int main(int /* argc */, char** /* argv */) {
             if (anchorX.size() == 2) {
                 shape = new MidpointCircle(anchorX[0], anchorY[0], anchorX[1], anchorY[1]);
                 shape->draw();
+                if (fillFlag) {
+                    shape->fill(seedX, seedY, width, height);
+                }
                 delete shape;
             }
             std::cout << "Circle" << std::endl;
@@ -202,6 +292,9 @@ int main(int /* argc */, char** /* argv */) {
             if (anchorX.size() == 3) {
                 shape = new MidpointEllipse(anchorX[0], anchorY[0], anchorX[1], anchorY[1], anchorX[2], anchorY[2]);
                 shape->draw();
+                if (fillFlag) {
+                    shape->fill(seedX, seedY, width, height);
+                }
                 delete shape;
             }
             std::cout << "Ellipse" << std::endl;
@@ -214,14 +307,22 @@ int main(int /* argc */, char** /* argv */) {
             if (anchorX.size() == 2) {
                 shape = new CGRectangle(anchorX[0], anchorY[0], anchorX[1], anchorY[1]);
                 shape->draw();
+                if (fillFlag) {
+                    shape->fill(seedX, seedY, width, height);
+                }
                 delete shape;
             }
             std::cout << "Rectangle" << std::endl;
             break;
         case CGType::POLYGON:
-            shape = new CGPolygon(anchorX, anchorY);
-            shape->draw();
-            delete shape;
+            if (!anchorX.empty() && !anchorY.empty()) {
+                shape = new CGPolygon(anchorX, anchorY);
+                shape->draw();
+                if (fillFlag) {
+                    shape->fill(seedX, seedY, width, height);
+                }
+                delete shape;
+            }
             std::cout << "Polygon" << std::endl;
         }
         
@@ -233,8 +334,12 @@ int main(int /* argc */, char** /* argv */) {
             std::cout << y << " ";
         }
         std::cout << std::endl;
+
+
         // Draw nanogui
         screen->draw_widgets();
+
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, frameBuffer[nextIndex]);
 
         glfwSwapInterval(0);
         glfwSwapBuffers(window);
@@ -245,10 +350,7 @@ int main(int /* argc */, char** /* argv */) {
     // Terminate GLFW, clearing any resources allocated by GLFW.
     shader.unbind();
     glfwTerminate();
-
-    delete modeComboBox;
-    delete shapeComboBox;
-    delete colorComboBox;
+    nanogui::shutdown();
 
     return 0;
 }

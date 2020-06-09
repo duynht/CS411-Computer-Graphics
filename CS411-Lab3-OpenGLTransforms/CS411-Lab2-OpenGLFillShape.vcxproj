@@ -23,7 +23,7 @@
     <ProjectGuid>{00AEE71D-C1CE-48BD-A664-82EE5F059AD5}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>CS411-Lab3-OpenGLTransforms</ProjectName>
+    <ProjectName>CS411-Lab3-OpenGL2DTransforms</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

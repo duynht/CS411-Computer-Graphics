@@ -52,13 +52,16 @@ MidpointEllipse::MidpointEllipse(GLint xF0, GLint yF0, GLint xF1, GLint yF1, GLi
 	GLint EF1 = hypot(abs(xE - xF1), abs(yE - yF1));
 	rx = (EF0 + EF1) / 2;
 
-	GLint c = hypot(abs(xF0 - xF1), abs(yF0 - yF1));
-	if (rx >= c) {
-		ry = sqrt((1LL * rx - 1LL * c) * (1LL * rx + 1LL * c));
+	GLuint c = hypot(abs(xF0 - xF1), abs(yF0 - yF1)) / 2;
+	
+	//angle = atan2(1LL * xF0 * yCenter - 1LL * yF0 * xCenter, 1LL * xF0 * xCenter + 1LL * yF0 * yCenter);
+	angle = atan2((yF1 - yCenter) / (double) (xF1 - xCenter), 1.0);
+		
+	if (rx < c) {
+		std::swap(rx, c);
 	}
-	else {
-		ry = sqrt((1LL * c - 1LL * rx) * (1LL * c + 1LL * rx));
-	}
+
+	ry = sqrt((1LL * rx - 1LL * c) * (1LL * rx + 1LL * c));
 
 }
 
@@ -94,6 +97,10 @@ CGRectangle::CGRectangle(GLint xUL, GLint yUL, GLint xBR, GLint yBR) {
 
 	x[3] = x[0];
 	y[3] = y[2];
+
+	//When drawing filled objects, however, "slice notation" is used.
+	x[3]++;
+	y[3]++;
 }
 
 CGPolygon::CGPolygon(std::vector<int> x, std::vector<int> y) {
@@ -101,7 +108,13 @@ CGPolygon::CGPolygon(std::vector<int> x, std::vector<int> y) {
 
 	this->x = x;
 	this->y = y;
+
+	//When drawing filled objects, however, "slice notation" is used.
+	*((this->x).end() - 1)++;
+	*((this->y).end() - 1)++;
 }
+
+//----------------------
 
 void Shape::draw() {
 	GLuint vertArray;
@@ -288,8 +301,6 @@ void MidpointCircle::draw() {
 
 }
 
-
-//TODO: axis rotation
 void MidpointEllipse::draw() {
 	Shape::positions.clear();
 	GLdouble x = 0;
@@ -363,6 +374,16 @@ void MidpointEllipse::draw() {
 		}
 	}
 
+	auto forwardTranslate = glm::translate(glm::dmat4(1), glm::dvec3(xCenter, yCenter, 0.0));
+	auto rotation = glm::rotate(forwardTranslate, angle, glm::dvec3(0.0, 0.0, 1.0));
+	auto transform = glm::translate(rotation, glm::dvec3(-xCenter, -yCenter, 0.0));
+
+	for (auto i = 0; i < Shape::positions.size() - 1; i += 2) {
+		auto vec = glm::vec3(transform * glm::vec4((double)Shape::positions[i], (double)Shape::positions[i + 1], 0.0, 1.0));
+		Shape::positions[i] = vec[0];
+		Shape::positions[i + 1] = vec[1];
+	}
+	std::cout << angle * 180 / M_PI<< std::endl;
 	Shape::draw();
 }
 
@@ -510,4 +531,117 @@ void CGPolygon::draw() {
 	}
 	Shape::glPrimitive = GL_LINE_LOOP;
 	Shape::draw();
+}
+
+//-------------------------
+
+void Shape::fill(const GLint &seedX, const GLint &seedY, const GLint &width, const GLint &height) {
+	//std::queue<std::pair<GLint, GLint>> q;
+	//std::vector<bool> visited(width * height + 1);
+	//visited[seedX*height + seedY] = true;
+	//q.push({ seedX, seedY });
+	//GLint* pixel = new GLint();
+	//while (!q.empty()) {
+	//	auto pos = q.front();
+	//	q.pop();
+	//	glReadPixels(pos.first, pos.second, 1, 1, GL_ALPHA, GL_INT, pixel);
+	//	if (!*pixel) {
+	//		fillPositions.push_back(pos.first);
+	//		fillPositions.push_back(pos.second);
+
+	//		if (pos.first - 1 > 0 && !visited[(pos.first - 1)*height + pos.second]) {
+	//			q.push({ pos.first - 1, pos.second });
+	//			visited[(pos.first - 1) * height + pos.second] = true;
+	//		}
+	//		if (pos.first + 1 < width && !visited[(pos.first + 1)*height + pos.second]) {
+	//			q.push({ pos.first + 1, pos.second });
+	//			visited[(pos.first + 1) * height + pos.second] = true;
+	//		}
+	//		if (pos.second - 1 > 0 && !visited[pos.first*height + (pos.second - 1)]) {
+	//			q.push({ pos.first, pos.second - 1 });
+	//			visited[pos.first * height + (pos.second - 1)] = true;
+	//		}
+	//		if (pos.second + 1 < height && !visited[pos.first*height + (pos.second + 1)]) {
+	//			q.push({ pos.first, pos.second + 1 });
+	//			visited[pos.first * height + (pos.second + 1)] = true;
+	//		}
+	//	}
+	//}
+
+	//delete pixel;
+	glReadBuffer(GL_BACK);
+	int x1;
+	bool spanAbove, spanBelow;
+	GLfloat pixel[4];
+	std::vector<bool> visited(width * height);
+
+	std::stack<std::pair<GLint,GLint>> stack;
+	stack.push({ seedX, seedY });
+	
+	while (!stack.empty()) {
+		auto pos = stack.top();
+		stack.pop();
+		glReadPixels(pos.first, height - pos.second, 1, 1, GL_RGBA, GL_FLOAT, pixel);
+		x1 = pos.first;
+		
+		while(!(visited[x1*height + pos.second] || pixel[3]) && --x1 >= 0) {
+			glReadPixels(x1, height - pos.second, 1, 1, GL_RGBA, GL_FLOAT, pixel);
+		}
+
+		spanAbove = spanBelow = false;
+
+		while(true) {
+			if (++x1 < width) {
+				glReadPixels(x1, height - pos.second, 1, 1, GL_RGBA, GL_FLOAT, pixel);
+				if (visited[x1 * height + pos.second] || pixel[3]) {
+					break;
+				}
+			}
+			else {
+				break;
+			}
+			fillPositions.push_back(x1);
+			fillPositions.push_back(pos.second);
+			visited[x1 * height + pos.second] = true;
+
+			if (pos.second > 0) {
+				glReadPixels(x1, height - (pos.second - 1) , 1, 1, GL_RGBA, GL_FLOAT, pixel);
+				if (!spanAbove && !(visited[x1 * height + (pos.second - 1)] || pixel[3])) {
+					stack.push({ x1, pos.second - 1 });
+					spanAbove = true;
+				}
+				else if (spanAbove && (visited[x1 * height + (pos.second - 1)] || pixel[3])) {
+					spanAbove = false;
+				}
+			}
+
+			if (pos.second < height - 1) {
+				glReadPixels(x1, height - (pos.second + 1), 1, 1, GL_RGBA, GL_FLOAT, pixel);
+				if (!spanBelow && !(visited[x1 * height + (pos.second + 1)] || pixel[3])) {
+					stack.push({ x1, pos.second + 1 });
+					spanBelow = true;
+				}
+				else if (spanBelow && (visited[x1 * height + (pos.second + 1)] || pixel[3])) {
+					spanBelow = false;
+				}
+			}			
+		}
+	}
+
+	if (!fillPositions.empty()) {
+		GLuint vertArray;
+		glCreateVertexArrays(1, &vertArray);
+		glBindVertexArray(vertArray);
+		GLuint buffer;
+		glCreateBuffers(1, &buffer);
+		glBindBuffer(GL_ARRAY_BUFFER, buffer);
+		glNamedBufferStorage(buffer, sizeof(GLint) * fillPositions.size(), fillPositions.data(), 0);
+
+		glVertexAttribPointer(0, 2, GL_INT, GL_FALSE, sizeof(GLint) * 2, 0);
+		glEnableVertexAttribArray(0);
+
+		glDrawArrays(GL_POINTS, 0, fillPositions.size() / 2);
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
 }

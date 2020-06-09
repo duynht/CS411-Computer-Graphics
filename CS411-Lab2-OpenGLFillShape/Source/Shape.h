@@ -1,11 +1,15 @@
 #pragma once
+#define _USE_MATH_DEFINES
 #include <stdlib.h>
 #include <iostream>
 #include <vector>
+#include <stack>
 #include <math.h>
 //#include <GL/gl3w.h>
 #include<glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
 enum class CGType {
 	NONE = -1,
@@ -24,10 +28,12 @@ protected:
 	GLenum glPrimitive = GL_POINTS;
 	GLint numPoints = 0;
 	std::vector<GLint> positions;
+	std::vector<GLint> fillPositions;
 public:
 	CGType type = CGType::NONE;
 	virtual void draw();
 	virtual void glDraw() {};
+	virtual void fill(const GLint &seedX, const GLint &seedY, const GLint &width, const GLint &height);
 };
 
 class BresenhamLine : public Shape {
@@ -57,6 +63,7 @@ public:
 class MidpointEllipse : public Shape {
 	GLint xCenter, yCenter;
 	GLuint rx, ry;
+	double angle = 0.0;
 public:
 	MidpointEllipse(GLint xCenter, GLint yCenter, GLint a, GLint b);
 	MidpointEllipse(GLint xF0, GLint yF0, GLint xF1, GLint yF1, GLint xE, GLint yE);

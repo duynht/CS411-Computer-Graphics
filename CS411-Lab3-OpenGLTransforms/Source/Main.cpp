@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cmath>
+#include <numeric>
 #include <nanogui/nanogui.h>
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -35,7 +36,7 @@ static void resetGlobal() {
 }
 
 int main(int /* argc */, char** /* argv */) {
-
+    nanogui::init();
     if (!glfwInit()) {
         return -1;
     }
@@ -56,7 +57,7 @@ int main(int /* argc */, char** /* argv */) {
     glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 
     // Create a GLFWwindow object
-    GLFWwindow* window = glfwCreateWindow(800, 800, "Shape Fill", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(800, 800, "Transformation", nullptr, nullptr);
     if (window == nullptr) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -77,7 +78,7 @@ int main(int /* argc */, char** /* argv */) {
     screen = new nanogui::Screen();
     screen->initialize(window, true);
 
-    Shader shader("Source/resources/shaders/BasicShaders.glsl");
+    Shader shader("../Source/resources/shaders/BasicShaders.glsl");
 
     nanogui::Window* nanoguiWindow = new nanogui::Window(screen, "Dashboard");
     new nanogui::Label(nanoguiWindow, "Interaction Mode", "sans-bold");
@@ -87,20 +88,6 @@ int main(int /* argc */, char** /* argv */) {
                                             " Idle ",
                                             " Draw ",
                                             " Transform "});
-
-    modeComboBox->set_callback(
-        [](int mode) {
-            nanogui::MessageDialog* dialog = nullptr;
-            switch (mode) {
-            case 0:
-                resetGlobal();
-            case 1:
-                dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Draw Manual", "Use RIGHT-CLICK to add vertices to the polygon.\n Press ESC or switch to Idle Mode to delete the current polygon.");
-                dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
-                break;
-            }
-        }
-    );
 
     new nanogui::Label(nanoguiWindow, "Color", "sans-bold");
     nanogui::ComboBox* colorComboBox = new nanogui::ComboBox(nanoguiWindow, {
@@ -130,44 +117,110 @@ int main(int /* argc */, char** /* argv */) {
                                          " Rotate ",
                                          " Scale " });
 
+    nanogui::Widget* rotateGroup = new nanogui::Widget(nanoguiWindow);
+    rotateGroup->set_layout(new nanogui::BoxLayout(nanogui::Orientation::Horizontal, nanogui::Alignment::Fill, 0, 6));
+    rotateGroup->set_layout(new nanogui::BoxLayout(nanogui::Orientation::Horizontal, nanogui::Alignment::Fill, 0, 6));
+    auto ccwButton = new nanogui::Button(rotateGroup, " CCW ", FA_UNDO);
+    auto cwButton = new nanogui::Button(rotateGroup, "  CW  ", FA_REDO);
+
+    //ccwButton->set_width((transformComboBox->width() - 6) / 2);
+    ccwButton->set_callback(
+        [] {
+            theta +=  M_PI / 180;
+        }
+    );
+    ccwButton->set_enabled(false);
+
+    //cwButton->set_width((transformComboBox->width() - 6) / 2);
+    cwButton->set_callback(
+        [] {
+            theta -= M_PI / 180;
+        }
+    );
+    cwButton->set_enabled(false);
+
+    nanogui::Widget* scaleGroup = new nanogui::Widget(nanoguiWindow);
+    scaleGroup->set_layout(new nanogui::BoxLayout(nanogui::Orientation::Horizontal, nanogui::Alignment::Middle, 0, 6));
+    auto scaledownButton = new nanogui::Button(scaleGroup, "", FA_MINUS);
+    auto currentScaleTextBox = new nanogui::TextBox(scaleGroup);
+    auto scaleupButton = new nanogui::Button(scaleGroup, "", FA_PLUS);
+
+    currentScaleTextBox->set_value("100");
+    currentScaleTextBox->set_units("%");
+
+    scaleupButton->set_callback(
+        [&currentScaleTextBox] {
+            scaleFactor += 0.1;
+            //currentScaleTextBox->set_value(std::to_string((int)(scaleFactor * 100)));
+        }
+    );
+    scaleupButton->set_enabled(false);
+
+    scaledownButton->set_callback(
+        [&currentScaleTextBox] {
+            scaleFactor -= 0.1;
+            //currentScaleTextBox->set_value(std::to_string((int)(scaleFactor * 100)));
+        }
+    );
+    scaledownButton->set_enabled(false);
+
     transformComboBox->set_callback(
-        [&nanoguiWindow](int selectedTransformation) {
-            nanogui::MessageDialog* dialog = nullptr;
-            nanogui::Button* leftButton = nullptr;
-            nanogui::Button* rightButton = nullptr;
-            nanogui::Popup* popup = nullptr;
-            switch (selectedTransformation) {
-            case 0:
-                dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Translation", "Use ARROW KEYS to translate the polygon around.");
+        [&nanoguiWindow, &ccwButton, &cwButton, &scaleupButton, &scaledownButton](int selectedTransformation) {
+            ccwButton->set_enabled(false);
+            cwButton->set_enabled(false);
+            scaleupButton->set_enabled(false);
+            scaledownButton->set_enabled(false);
+            if (selectedTransformation == 0) {
+                auto dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Translation", "Use ARROW KEYS to translate the polygon around.");
                 dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
-                break;
-            case 1:                
-                dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Rotation", "Click on pop-up buttons to rotate the polygon clockwise or count.");
-                dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
-                //popup = transformComboBox->popup();
-                //popup->set_layout(new nanogui::GroupLayout());
-
-                leftButton = nanoguiWindow->add<nanogui::Button>("Counterclockwise", FA_ARROW_CIRCLE_LEFT);
-                leftButton->set_callback(
-                    [] {
-                        scaleFactor -= 0.1;
-                    }
-                );
-
-                rightButton = nanoguiWindow->add<nanogui::Button>("Clockwise", FA_ARROW_CIRCLE_RIGHT);
-                rightButton->set_callback(
-                    [] {
-                        scaleFactor += 0.1;
-                    }
-                );
-
-            case 2:
-                dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Scale", "Use ARROW KEYS to translate the polygon around.");
+            }
+            if (selectedTransformation == 1) {
+                ccwButton->set_enabled(true);
+                cwButton->set_enabled(true);
+                auto dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Rotation", "Click CCW/CW BUTTONS to rotate the polygon clockwise or counterclockwise relative to the screen center.");
+                dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });\
+            }
+            if (selectedTransformation == 2) {
+                scaleupButton->set_enabled(true);
+                scaledownButton->set_enabled(true);
+                auto dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Scaling", "Click +/- BUTTONS to scale the polygon");
                 dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
             }
         }
     );
-    
+
+    transformComboBox->set_enabled(false);
+
+    modeComboBox->set_callback(
+        [&transformComboBox, &currentScaleTextBox, &ccwButton, &cwButton, &scaleupButton, &scaledownButton](int mode) {
+            transformComboBox->set_enabled(false);
+            ccwButton->set_enabled(false);
+            cwButton->set_enabled(false);
+            scaleupButton->set_enabled(false);
+            scaledownButton->set_enabled(false);
+            if (mode == 0) {
+                resetGlobal();
+            }
+            if (mode == 1) {
+                if (curMode != 1) {
+                    resetGlobal();
+                    auto dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Draw Mode", "Use RIGHT-CLICK to add vertices to the polygon.\n Press ESC or switch to Idle Mode to delete the current progress.");
+                    dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
+                }
+
+            }
+            if (mode == 2) {
+                transformComboBox->set_enabled(true);
+                transformComboBox->set_selected_index(0);
+                auto dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Translation", "Use ARROW KEYS to translate the polygon around.");
+                dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
+                
+                dialog = new nanogui::MessageDialog(screen, nanogui::MessageDialog::Type::Information, "Transform Mode", "Choose your transformation in the drop-down menu.\n Press ESC or switch to any mode to delete the current progress.");
+                dialog->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
+            }
+        }
+    );
+
     screen->set_visible(true);
     screen->perform_layout();
 
@@ -263,19 +316,27 @@ int main(int /* argc */, char** /* argv */) {
 
 
         shader.setUniformVec4f("u_Color", color);
-
         curMode = modeComboBox->selected_index();
         curColor = colorComboBox->selected_index();
         curTrans = transformComboBox->selected_index();
         glfwGetCursorPos(window, &cursorX, &cursorY);
 
-        transformation = glm::mat4(scaleFactor * glm::cos(theta), scaleFactor * -glm::sin(theta), 0.0, scaleFactor * (rightArrowCount - leftArrowCount),
-                                   scaleFactor * glm::sin(theta),  scaleFactor * glm::cos(theta), 0.0,    scaleFactor * (downArrowCount - upArrowCount),
-                                               0.0,              0.0,               scaleFactor * 1.0,                                              0.0,
-                                               0.0,              0.0,                             0.0,                                scaleFactor * 1.0);
+        double offsetX = std::accumulate(anchorX.begin(), anchorX.end(), 0.0) / anchorX.size();
+        double offsetY = std::accumulate(anchorY.begin(), anchorY.end(), 0.0) / anchorY.size();
+
+        std::cout << std::endl << offsetX << " " << offsetY << std::endl;
+
+        //offsetX /= width;
+        //offsetY /= height;
+
+        transformation = glm::mat4( glm::cos(theta), -glm::sin(theta), 0.0, (-offsetX * glm::cos(theta) + offsetY * glm::sin(theta) + offsetX) * (((double) rightArrowCount - (double) leftArrowCount)/(double) width),
+                                    glm::sin(theta),  glm::cos(theta), 0.0, (-offsetX * glm::sin(theta) - offsetY * glm::cos(theta) + offsetY) *  (((double) upArrowCount - (double) downArrowCount)/(double) height),
+                                                0.0,              0.0,                                                              1.0,                                                                  0.0,
+                                                0.0,              0.0,                                                              0.0,                                                      1.0/scaleFactor);
         
         shader.setUniformMat4f("u_transformation", transformation);
 
+        currentScaleTextBox->set_value(std::to_string((int)(scaleFactor * 100)));
 
         if (curMode) {
             shape = new CGPolygon(anchorX, anchorY);
@@ -283,8 +344,6 @@ int main(int /* argc */, char** /* argv */) {
             delete shape;
             std::cout << "Polygon" << std::endl;
         }
-        
-        transformComboBox->set_visible(curMode == 2);
         
         for (auto x : anchorX) {
             std::cout << x << " ";
@@ -306,9 +365,7 @@ int main(int /* argc */, char** /* argv */) {
     // Terminate GLFW, clearing any resources allocated by GLFW.
     shader.unbind();
     glfwTerminate();
-
-    delete modeComboBox;
-    delete colorComboBox;
+    nanogui::shutdown();
 
     return 0;
 }

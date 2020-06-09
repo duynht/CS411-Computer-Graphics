@@ -7,7 +7,7 @@ uniform mat4 u_MVP;
 uniform mat4 u_transformation;
 
 void main() {
-	gl_Position = u_MVP * (position * u_transformation);
+	gl_Position =  u_MVP * position * u_transformation;
 }
 
 #shader fragment
