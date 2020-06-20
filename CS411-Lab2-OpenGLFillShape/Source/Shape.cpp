@@ -53,10 +53,10 @@ MidpointEllipse::MidpointEllipse(GLint xF0, GLint yF0, GLint xF1, GLint yF1, GLi
 	rx = (EF0 + EF1) / 2;
 
 	GLuint c = hypot(abs(xF0 - xF1), abs(yF0 - yF1)) / 2;
-	
+
 	//angle = atan2(1LL * xF0 * yCenter - 1LL * yF0 * xCenter, 1LL * xF0 * xCenter + 1LL * yF0 * yCenter);
-	angle = atan2((yF1 - yCenter) / (double) (xF1 - xCenter), 1.0);
-		
+	angle = atan2((yF1 - yCenter) / (double)(xF1 - xCenter), 1.0);
+
 	if (rx < c) {
 		std::swap(rx, c);
 	}
@@ -306,9 +306,9 @@ void MidpointEllipse::draw() {
 	GLdouble x = 0;
 	GLdouble y = ry;
 
-	GLdouble d1 = ( (double) ry * (double) ry ) - ( (double) rx * (double) rx * (double) ry) + (0.25 * (double) rx * (double) rx);
-	GLdouble dx = 2 * (double) ry * (double) ry * x;
-	GLdouble dy = 2 * (double) rx * (double) rx * y;
+	GLdouble d1 = ((double)ry * (double)ry) - ((double)rx * (double)rx * (double)ry) + (0.25 * (double)rx * (double)rx);
+	GLdouble dx = 2 * (double)ry * (double)ry * x;
+	GLdouble dy = 2 * (double)rx * (double)rx * y;
 
 	while (dx < dy) {
 		Shape::positions.push_back(xCenter + x);
@@ -328,21 +328,21 @@ void MidpointEllipse::draw() {
 
 		if (d1 < 0) {
 			x++;
-			dx += 2 * (double) ry * (double) ry;
-			d1 += dx + (double) ry * (double) ry;
+			dx += 2 * (double)ry * (double)ry;
+			d1 += dx + (double)ry * (double)ry;
 		}
 		else {
 			x++;
 			y--;
-			dx += 2 * (double) ry * (double) ry;
-			dy -= 2 * (double) rx * (double) rx;
-			d1 += dx - dy + (double) ry * (double) ry;
+			dx += 2 * (double)ry * (double)ry;
+			dy -= 2 * (double)rx * (double)rx;
+			d1 += dx - dy + (double)ry * (double)ry;
 		}
 	}
 
-	GLdouble d2 = (( (double) ry * (double) ry) * ((x + 0.5) * (x + 0.5))) +
-		(( (double) rx * (double) rx) * ((y - 1) * (y - 1))) -
-		( (double) rx * (double) rx * (double) ry * (double) ry);
+	GLdouble d2 = (((double)ry * (double)ry) * ((x + 0.5) * (x + 0.5))) +
+		(((double)rx * (double)rx) * ((y - 1) * (y - 1))) -
+		((double)rx * (double)rx * (double)ry * (double)ry);
 
 	while (y >= 0) {
 		Shape::positions.push_back(xCenter + x);
@@ -362,15 +362,15 @@ void MidpointEllipse::draw() {
 
 		if (d2 > 0) {
 			y--;
-			dy -= 2 * (double) rx * (double) rx;
-			d2 += (double) rx * (double) rx - dy;
+			dy -= 2 * (double)rx * (double)rx;
+			d2 += (double)rx * (double)rx - dy;
 		}
 		else {
 			y--;
 			x++;
-			dx += 2 * (double) ry * (double) ry;
-			dy -= 2 * (double) rx * (double) rx;
-			d2 += dx - dy + (double) rx * (double) rx;
+			dx += 2 * (double)ry * (double)ry;
+			dy -= 2 * (double)rx * (double)rx;
+			d2 += dx - dy + (double)rx * (double)rx;
 		}
 	}
 
@@ -383,7 +383,7 @@ void MidpointEllipse::draw() {
 		Shape::positions[i] = vec[0];
 		Shape::positions[i + 1] = vec[1];
 	}
-	std::cout << angle * 180 / M_PI<< std::endl;
+	std::cout << angle * 180 / M_PI << std::endl;
 	Shape::draw();
 }
 
@@ -535,96 +535,53 @@ void CGPolygon::draw() {
 
 //-------------------------
 
-void Shape::fill(const GLint &seedX, const GLint &seedY, const GLint &width, const GLint &height) {
-	//std::queue<std::pair<GLint, GLint>> q;
-	//std::vector<bool> visited(width * height + 1);
-	//visited[seedX*height + seedY] = true;
-	//q.push({ seedX, seedY });
-	//GLint* pixel = new GLint();
-	//while (!q.empty()) {
-	//	auto pos = q.front();
-	//	q.pop();
-	//	glReadPixels(pos.first, pos.second, 1, 1, GL_ALPHA, GL_INT, pixel);
-	//	if (!*pixel) {
-	//		fillPositions.push_back(pos.first);
-	//		fillPositions.push_back(pos.second);
-
-	//		if (pos.first - 1 > 0 && !visited[(pos.first - 1)*height + pos.second]) {
-	//			q.push({ pos.first - 1, pos.second });
-	//			visited[(pos.first - 1) * height + pos.second] = true;
-	//		}
-	//		if (pos.first + 1 < width && !visited[(pos.first + 1)*height + pos.second]) {
-	//			q.push({ pos.first + 1, pos.second });
-	//			visited[(pos.first + 1) * height + pos.second] = true;
-	//		}
-	//		if (pos.second - 1 > 0 && !visited[pos.first*height + (pos.second - 1)]) {
-	//			q.push({ pos.first, pos.second - 1 });
-	//			visited[pos.first * height + (pos.second - 1)] = true;
-	//		}
-	//		if (pos.second + 1 < height && !visited[pos.first*height + (pos.second + 1)]) {
-	//			q.push({ pos.first, pos.second + 1 });
-	//			visited[pos.first * height + (pos.second + 1)] = true;
-	//		}
-	//	}
-	//}
-
-	//delete pixel;
-	glReadBuffer(GL_BACK);
+void Shape::fill(const GLint& seedX, const GLint& seedY, const GLint& width, const GLint& height) {
 	int x1;
 	bool spanAbove, spanBelow;
-	GLfloat pixel[4];
 	std::vector<bool> visited(width * height);
 
-	std::stack<std::pair<GLint,GLint>> stack;
+	std::stack<std::pair<GLint, GLint>> stack;
 	stack.push({ seedX, seedY });
-	
+
 	while (!stack.empty()) {
 		auto pos = stack.top();
 		stack.pop();
-		glReadPixels(pos.first, height - pos.second, 1, 1, GL_RGBA, GL_FLOAT, pixel);
 		x1 = pos.first;
-		
-		while(!(visited[x1*height + pos.second] || pixel[3]) && --x1 >= 0) {
-			glReadPixels(x1, height - pos.second, 1, 1, GL_RGBA, GL_FLOAT, pixel);
+
+		while (x1 >= 0 && !(visited[x1 * height + pos.second] || pixel[4*((height - pos.second - 1) * width + x1)+3]) ) {
+			x1--;
 		}
 
 		spanAbove = spanBelow = false;
-
-		while(true) {
-			if (++x1 < width) {
-				glReadPixels(x1, height - pos.second, 1, 1, GL_RGBA, GL_FLOAT, pixel);
-				if (visited[x1 * height + pos.second] || pixel[3]) {
-					break;
-				}
-			}
-			else {
-				break;
-			}
+		x1++;
+		while (x1 < width && !(visited[x1 * height + pos.second] || pixel[4 * ((height - pos.second - 1) * width + x1) + 3])) {
 			fillPositions.push_back(x1);
-			fillPositions.push_back(pos.second);
+			fillPositions.push_back(pos.second + 1);
 			visited[x1 * height + pos.second] = true;
 
+			//Above
 			if (pos.second > 0) {
-				glReadPixels(x1, height - (pos.second - 1) , 1, 1, GL_RGBA, GL_FLOAT, pixel);
-				if (!spanAbove && !(visited[x1 * height + (pos.second - 1)] || pixel[3])) {
+				if (!spanAbove && !(visited[x1 * height + (pos.second - 1)] || pixel[4 * ((height - (pos.second - 1) - 1) * width + x1) + 3])) {
 					stack.push({ x1, pos.second - 1 });
 					spanAbove = true;
 				}
-				else if (spanAbove && (visited[x1 * height + (pos.second - 1)] || pixel[3])) {
+				else if (spanAbove && (visited[x1 * height + (pos.second - 1)] || pixel[4 * ((height - (pos.second - 1) - 1) * width + x1) + 3])) {
 					spanAbove = false;
 				}
 			}
 
+			//Below
 			if (pos.second < height - 1) {
-				glReadPixels(x1, height - (pos.second + 1), 1, 1, GL_RGBA, GL_FLOAT, pixel);
-				if (!spanBelow && !(visited[x1 * height + (pos.second + 1)] || pixel[3])) {
+				if (!spanBelow && !(visited[x1 * height + (pos.second + 1)] || pixel[4 * ((height - (pos.second + 1) - 1) * width + x1) + 3])) {
 					stack.push({ x1, pos.second + 1 });
 					spanBelow = true;
 				}
-				else if (spanBelow && (visited[x1 * height + (pos.second + 1)] || pixel[3])) {
+				else if (spanBelow && (visited[x1 * height + (pos.second + 1)] || pixel[4 * ((height - (pos.second + 1) - 1) * width + x1) + 3])) {
 					spanBelow = false;
 				}
-			}			
+			}
+
+			x1++;
 		}
 	}
 

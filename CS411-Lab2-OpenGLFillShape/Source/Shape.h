@@ -31,6 +31,7 @@ protected:
 	std::vector<GLint> fillPositions;
 public:
 	CGType type = CGType::NONE;
+	GLfloat* pixel;
 	virtual void draw();
 	virtual void glDraw() {};
 	virtual void fill(const GLint &seedX, const GLint &seedY, const GLint &width, const GLint &height);

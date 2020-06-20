@@ -151,8 +151,8 @@
   <ItemGroup>
     <ClCompile Include="source\Main.cpp" />
     <ClCompile Include="Source\Shader.cpp" />
-    <ClCompile Include="Source\Shape.cpp" />
     <ClCompile Include="source\vendor\glm\detail\glm.cpp" />
+    <ClCompile Include="Source\Shape.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\dependencies\gl3w\include\gl\gl3w.h" />

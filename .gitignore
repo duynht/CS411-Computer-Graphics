@@ -2,3 +2,4 @@
 **/Binaries/**
 *.zip
 *.exe
+*.props
